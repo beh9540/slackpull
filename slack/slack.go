@@ -22,10 +22,11 @@ type message struct {
         Attachments []attachment        `json:"attachments"`
 }
 
-//TODO (beh) this needs to be configurable
-var slackWebhookUrl string = "https://hooks.slack.com/services/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"
+type Slack struct {
+        Webhook string
+}
 
-func NewReview(title string, desc string, url string) error {
+func (s *Slack) NewReview(username string, title string, desc string, url string) error {
         log.Print("Sending new review to slack")
         newAttachment := attachment{
                 Title: title,
@@ -35,27 +36,27 @@ func NewReview(title string, desc string, url string) error {
         attachments := make([]attachment, 1)
         newMessage := message{
                 Username: "pull-request",
-                Text: "New pull request to review:",
+                Text: fmt.Sprintf("New pull request to review from %s:", username),
                 Attachments: append(attachments, newAttachment),
         }
-        return sendMessage(&newMessage)
+        return s.sendMessage(&newMessage)
 }
 
-func CompleteReview(title string) error {
+func (s *Slack) CompleteReview(title string) error {
         newMessage := message{
                 Username: "pull-request",
                 Text: fmt.Sprintf("Pull request: %s finished review", title),
         }
-        return sendMessage(&newMessage)
+        return s.sendMessage(&newMessage)
 }
 
-func sendMessage(newMessage *message) error {
+func (s *Slack) sendMessage(newMessage *message) error {
         log.Printf("Sending message: %v", newMessage)
         messageBytes, err := json.Marshal(*newMessage)
         if err != nil {
                 return err
         }
-        resp, err := http.Post(slackWebhookUrl, "application/json", bytes.NewBuffer(messageBytes))
+        resp, err := http.Post(s.Webhook, "application/json", bytes.NewBuffer(messageBytes))
         log.Printf("Got status code: %d from slack, err: %v", resp.StatusCode, err)
         if resp.StatusCode != http.StatusOK {
                 return errors.New(fmt.Sprintf("Got invalid status code %d", resp.StatusCode))
